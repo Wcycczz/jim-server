@@ -1,5 +1,8 @@
 package org.jim.server.dao;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,13 +11,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.jim.common.packets.ChatBody;
 import org.jim.common.packets.Group;
 import org.jim.common.packets.UserMessageData;
-import org.jim.server.util.DataSourceUtil;
+import org.jim.server.util.ConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.alibaba.druid.pool.DruidPooledConnection;
-import com.alibaba.druid.pool.DruidPooledPreparedStatement;
-import com.alibaba.druid.pool.DruidPooledResultSet;
 
 public class IMMessageDao {
 
@@ -33,16 +32,16 @@ public class IMMessageDao {
 	}
 
 	public void saveChatBody(String type, ChatBody chatBody) {
-		DruidPooledConnection conn = null;
-		DruidPooledPreparedStatement pstmt = null;
+		Connection conn = null;
+		PreparedStatement pstmt = null;
 		String sql = "";
 		long now = System.currentTimeMillis();
 
 		try {
 			sql = "insert into im_message (chattype, msgtype, content, from_uid, group_id, to_uid, sendtime, is_arrive, arrive_time) "
 					+ "values  (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-			conn = DataSourceUtil.getConnection();
-			pstmt = (DruidPooledPreparedStatement) conn.prepareStatement(sql);
+			conn = ConnectionFactory.getInstance().makeConnection();
+			pstmt = conn.prepareStatement(sql);
 			int i = 1;
 			pstmt.setInt(i++, chatBody.getChatType());
 			pstmt.setInt(i++, chatBody.getMsgType());
@@ -72,29 +71,27 @@ public class IMMessageDao {
 					pstmt.close();
 			} catch (Exception e) {
 				log.error(e.getMessage());
-				e.printStackTrace();
 			}
 			try {
 				if (conn != null)
 					conn.close();
 			} catch (Exception e) {
 				log.error(e.getMessage());
-				e.printStackTrace();
 			}
 		}
 	}
 
-	public List<ChatBody> loadUnArriveMsg(DruidPooledConnection conn, String userid, List<Integer> unArriveIds) {
-		DruidPooledPreparedStatement pstmt = null;
-		DruidPooledResultSet rs = null;
+	public List<ChatBody> loadUnArriveMsg(Connection conn, String userid, List<Integer> unArriveIds) {
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
 
 		List<ChatBody> results = null;
 
 		try {
 			String sql = "select * from im_message where chattype = 2 and to_uid = ? and is_arrive = 0";
-			pstmt = (DruidPooledPreparedStatement) conn.prepareStatement(sql);
+			pstmt = conn.prepareStatement(sql);
 			pstmt.setString(1, userid);
-			rs = (DruidPooledResultSet) pstmt.executeQuery();
+			rs = pstmt.executeQuery();
 
 			while (rs.next()) {
 				if (null == results)
@@ -122,32 +119,30 @@ public class IMMessageDao {
 					rs.close();
 			} catch (Exception e2) {
 				log.error(e2.getMessage());
-				e2.printStackTrace();
 			}
 			try {
 				if (pstmt != null)
 					pstmt.close();
 			} catch (Exception e2) {
 				log.error(e2.getMessage());
-				e2.printStackTrace();
 			}
 		}
 		return null;
 	}
 
-	public List<ChatBody> loadUnArriveMsgByFrom(DruidPooledConnection conn, String userid, String from_userid,
+	public List<ChatBody> loadUnArriveMsgByFrom(Connection conn, String userid, String from_userid,
 			List<Integer> unArriveIds) {
-		DruidPooledPreparedStatement pstmt = null;
-		DruidPooledResultSet rs = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
 
 		List<ChatBody> results = null;
 
 		try {
 			String sql = "select * from im_message where chattype = 2 and to_uid = ? and from_uid = ? and is_arrive = 0";
-			pstmt = (DruidPooledPreparedStatement) conn.prepareStatement(sql);
+			pstmt = conn.prepareStatement(sql);
 			pstmt.setString(1, userid);
 			pstmt.setString(2, from_userid);
-			rs = (DruidPooledResultSet) pstmt.executeQuery();
+			rs = pstmt.executeQuery();
 
 			while (rs.next()) {
 				if (null == results)
@@ -168,45 +163,41 @@ public class IMMessageDao {
 			return results;
 		} catch (Exception e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} finally {
 			try {
 				if (rs != null)
 					rs.close();
 			} catch (Exception e2) {
 				log.error(e2.getMessage());
-				e2.printStackTrace();
 			}
 			try {
 				if (pstmt != null)
 					pstmt.close();
 			} catch (Exception e2) {
 				log.error(e2.getMessage());
-				e2.printStackTrace();
 			}
 		}
 		return null;
 	}
 
-	public UserMessageData loadUnArriveGroupMsg(DruidPooledConnection conn, String userid, String group_id,
+	public UserMessageData loadUnArriveGroupMsg(Connection conn, String userid, String group_id,
 			List<Integer> unArriveIds) {
 		UserMessageData groupMessageData = null;
-		DruidPooledPreparedStatement pstmt = null;
-		DruidPooledResultSet rs = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
 		try {
 			if (conn == null)
-				conn = DataSourceUtil.getConnection();
+				conn = ConnectionFactory.getInstance().makeConnection();
 		} catch (Exception e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		}
 
 		try {
 			String sql = "select * from im_message where chattype = 1 and to_uid = ? and group_id = ? and is_arrive = 0";
-			pstmt = (DruidPooledPreparedStatement) conn.prepareStatement(sql);
+			pstmt = conn.prepareStatement(sql);
 			pstmt.setString(1, userid);
 			pstmt.setString(2, group_id);
-			rs = (DruidPooledResultSet) pstmt.executeQuery();
+			rs = pstmt.executeQuery();
 
 			List<ChatBody> messages = null;
 
@@ -239,21 +230,18 @@ public class IMMessageDao {
 
 		} catch (Exception e) {
 			log.error(e.getMessage());
-			e.printStackTrace();
 		} finally {
 			try {
 				if (rs != null)
 					rs.close();
 			} catch (Exception e2) {
 				log.error(e2.getMessage());
-				e2.printStackTrace();
 			}
 			try {
 				if (pstmt != null)
 					pstmt.close();
 			} catch (Exception e2) {
 				log.error(e2.getMessage());
-				e2.printStackTrace();
 			}
 		}
 
@@ -262,9 +250,9 @@ public class IMMessageDao {
 
 	public UserMessageData getFriendsOfflineMessage(String userid, String from_userid) {
 		UserMessageData messageData = null;
-		DruidPooledConnection conn = null;
+		Connection conn = null;
 		try {
-			conn = DataSourceUtil.getConnection();
+			conn = ConnectionFactory.getInstance().makeConnection();
 
 			List<Integer> unArriveIds = new ArrayList<Integer>();
 
@@ -295,13 +283,13 @@ public class IMMessageDao {
 	}
 
 	public UserMessageData getFriendsOfflineMessage(String userid) {
-		DruidPooledConnection conn = null;
+		Connection conn = null;
 
 		List<Integer> unArriveMsgIds = new ArrayList<Integer>();
 
 		try {
 			// 加载私聊信息
-			conn = DataSourceUtil.getConnection();
+			conn = ConnectionFactory.getInstance().makeConnection();
 
 			UserMessageData messageData = new UserMessageData(userid);
 			List<ChatBody> results = loadUnArriveMsg(conn, userid, unArriveMsgIds);
@@ -340,18 +328,18 @@ public class IMMessageDao {
 		return null;
 	}
 
-	public void updateArriveStatus(DruidPooledConnection conn, List<Integer> unArriveMsgIds) {
+	public void updateArriveStatus(Connection conn, List<Integer> unArriveMsgIds) {
 		long now = System.currentTimeMillis();
 
 		if (null == unArriveMsgIds || unArriveMsgIds.isEmpty())
 			return;
 
-		DruidPooledPreparedStatement pstmt = null;
+		PreparedStatement pstmt = null;
 
 		try {
 			int i = 0;
 			String sql = "update im_message set is_arrive = ?, arrive_time = ? where id = ?";
-			pstmt = (DruidPooledPreparedStatement) conn.prepareStatement(sql);
+			pstmt = conn.prepareStatement(sql);
 
 			for (Integer id : unArriveMsgIds) {
 				i++;
@@ -363,7 +351,7 @@ public class IMMessageDao {
 					pstmt.executeBatch();
 				}
 			}
-			
+
 			pstmt.executeBatch();
 
 		} catch (Exception e) {
@@ -373,8 +361,7 @@ public class IMMessageDao {
 				if (pstmt != null)
 					pstmt.close();
 			} catch (Exception e2) {
-				log.error(e2.getMessage());
-				e2.printStackTrace();
+				log.error(e2.toString());
 			}
 		}
 
@@ -427,10 +414,10 @@ public class IMMessageDao {
 	}
 
 	public UserMessageData getGroupOfflineMessage(String userid, String group_id) {
-		DruidPooledConnection conn = null;
+		Connection conn = null;
 		List<Integer> ids = null;
 		try {
-			conn = DataSourceUtil.getConnection();
+			conn = ConnectionFactory.getInstance().makeConnection();
 
 			UserMessageData messageData = loadUnArriveGroupMsg(conn, userid, group_id, ids);
 
